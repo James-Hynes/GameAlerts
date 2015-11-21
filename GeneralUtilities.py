@@ -9,8 +9,11 @@ class CurrentNBADay:
     def __init__(self):
         self._valid_connection = self.check_valid_connection()
         self._data = self.get_data().json()['sports_content']['games']['game']
-        self.simple_game_list, self.adv_game_list = self.return_simple_game_dict(), self.return_adv_game_dict()
-        print(self.convert_to_list(self.adv_game_list)[1])
+        self.simple_game_dict, self.adv_game_dict = self.return_simple_game_dict(), self.return_adv_game_dict()
+        self.simple_game_list = self.convert_to_list(self.simple_game_dict)
+        self.adv_game_list = self.convert_to_list(self.adv_game_dict)
+
+        print(self.adv_game_dict)
 
     def get_data(self, attempt=1):
         if self._valid_connection:
@@ -34,15 +37,25 @@ class CurrentNBADay:
             self._valid_connection = True
 
     def return_simple_game_dict(self):
-        return {game['id']: {'teams': [game['visitor']['team_key'], game['home']['team_key']],
-                             'home_start': game['home_start_time']} for game in self._data}
+        try:
+            return {game['id']: {'teams': [game['visitor']['team_key'], game['home']['team_key']],
+                                 'home_start': game['home_start_time']} for game in self._data}
+        except KeyError:
+            return {}
 
     def return_adv_game_dict(self):
-        return {game['id']: {'teams': [game['visitor']['team_key'], game['home']['team_key']],
-                             'home_start': game['home_start_time'], 'city': game['city'],
-                             'radio': {'visitor': game['broadcasters']['radio']['broadcaster'][0]['display_name'],
-                                       'home': game['broadcasters']['radio']['broadcaster'][1]['display_name']}}
-                for game in self._data}
+        try:
+            return {game['id']: {'teams': [game['visitor']['team_key'], game['home']['team_key']],
+                                 'home_start': game['home_start_time'], 'city': game['city'],
+                                 'radio': {'visitor': game['broadcasters']['radio']['broadcaster'][0]['display_name'],
+                                           'home': game['broadcasters']['radio']['broadcaster'][1]['display_name']},
+                                 'arena': game['arena'],
+                                 'tv': {broadcast['home_visitor']: broadcast['display_name']
+                                        for broadcast in game['broadcasters']['tv']['broadcaster']}, 'period_time':
+                                 game['period_time']} for game in self._data}
+
+        except KeyError:
+            return {}
 
     @staticmethod
     def handle_error(callback, attempt, max_attempts=3):
@@ -61,8 +74,8 @@ class CurrentNBADay:
             return False
 
     @staticmethod
-    def convert_to_list(dict):
-        return [dict[item] for item in dict]
+    def convert_to_list(convert_dict):
+        return [convert_dict[item] for item in convert_dict]
 
     """
     def handle_connection_error(self, callback):
@@ -97,6 +110,5 @@ class CurrentNBADay:
     @property
     def year(self):
         return datetime.date.fromtimestamp(time.time()).year
-
 
 CurrentNBADay()
