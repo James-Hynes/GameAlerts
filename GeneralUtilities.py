@@ -9,7 +9,8 @@ class CurrentNBADay:
     def __init__(self):
         self._valid_connection = self.check_valid_connection()
         self._data = self.get_data().json()['sports_content']['games']['game']
-        self.simple_game_list = self.return_simple_game_list()
+        self.simple_game_list, self.adv_game_list = self.return_simple_game_dict(), self.return_adv_game_dict()
+        print(self.convert_to_list(self.adv_game_list)[1])
 
     def get_data(self, attempt=1):
         if self._valid_connection:
@@ -32,9 +33,16 @@ class CurrentNBADay:
         else:
             self._valid_connection = True
 
-    def return_simple_game_list(self):
-        return {game['id']: {'teams': [game['visitor']['team_key'], game['home']['team_key']], 'home_start':
-            game['home_start_time']} for game in self._data}
+    def return_simple_game_dict(self):
+        return {game['id']: {'teams': [game['visitor']['team_key'], game['home']['team_key']],
+                             'home_start': game['home_start_time']} for game in self._data}
+
+    def return_adv_game_dict(self):
+        return {game['id']: {'teams': [game['visitor']['team_key'], game['home']['team_key']],
+                             'home_start': game['home_start_time'], 'city': game['city'],
+                             'radio': {'visitor': game['broadcasters']['radio']['broadcaster'][0]['display_name'],
+                                       'home': game['broadcasters']['radio']['broadcaster'][1]['display_name']}}
+                for game in self._data}
 
     @staticmethod
     def handle_error(callback, attempt, max_attempts=3):
@@ -51,6 +59,10 @@ class CurrentNBADay:
             return True
         except requests.ConnectionError:
             return False
+
+    @staticmethod
+    def convert_to_list(dict):
+        return [dict[item] for item in dict]
 
     """
     def handle_connection_error(self, callback):
