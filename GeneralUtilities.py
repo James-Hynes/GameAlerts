@@ -2,6 +2,7 @@ import time
 import datetime
 import requests
 import threading
+from random import choice
 
 
 class CurrentNBADay:
@@ -12,8 +13,8 @@ class CurrentNBADay:
         self.simple_game_dict, self.adv_game_dict = self.return_simple_game_dict(), self.return_adv_game_dict()
         self.simple_game_list = self.convert_to_list(self.simple_game_dict)
         self.adv_game_list = self.convert_to_list(self.adv_game_dict)
-
-        print(self.adv_game_dict)
+        print(self.simple_game_list[0])
+        print(self.formatted_time_left(self.simple_game_list[0]))
 
     def get_data(self, attempt=1):
         if self._valid_connection:
@@ -39,16 +40,18 @@ class CurrentNBADay:
     def return_simple_game_dict(self):
         try:
             return {game['id']: {'teams': [game['visitor']['team_key'], game['home']['team_key']],
-                                 'home_start': game['home_start_time']} for game in self._data}
+                                 'start_time': self.change_time_pst(game['home_start_time'], game['home']['team_key'])}
+                    for game in self._data}
         except KeyError:
             return {}
 
     def return_adv_game_dict(self):
         try:
             return {game['id']: {'teams': [game['visitor']['team_key'], game['home']['team_key']],
-                                 'home_start': game['home_start_time'], 'city': game['city'],
-                                 'radio': {'visitor': game['broadcasters']['radio']['broadcaster'][0]['display_name'],
-                                           'home': game['broadcasters']['radio']['broadcaster'][1]['display_name']},
+                                 'start_time': self.change_time_pst(game['home_start_time'], game['home']['team_key']),
+                                 'city': game['city'], 'radio':
+                                     {'visitor': game['broadcasters']['radio']['broadcaster'][0]['display_name'],
+                                      'home': game['broadcasters']['radio']['broadcaster'][1]['display_name']},
                                  'arena': game['arena'],
                                  'tv': {broadcast['home_visitor']: broadcast['display_name']
                                         for broadcast in game['broadcasters']['tv']['broadcaster']}, 'period_time':
@@ -56,6 +59,10 @@ class CurrentNBADay:
 
         except KeyError:
             return {}
+
+    def time_until_game(self, game):
+        print(game['start_time'], self.time)
+        return game['start_time'] - self.time
 
     @staticmethod
     def handle_error(callback, attempt, max_attempts=3):
@@ -76,6 +83,15 @@ class CurrentNBADay:
     @staticmethod
     def convert_to_list(convert_dict):
         return [convert_dict[item] for item in convert_dict]
+
+    @staticmethod
+    def change_time_pst(inp_time, inp_team):
+        std_time = int(inp_time) - 1200
+        tz_change_pst = {-300: ['IND', 'CLE', 'DET', 'ATL', 'BOS', 'NYK', 'BKN', 'ORL', 'MIA', 'PHI', 'WAS', 'TOR'],
+                         0: ['GSW', 'SAC', 'LAL', 'LAC', 'POR'], -100: ['PHX', 'UTA', 'DEN'], -200:
+                         ['OKC', 'DAL', 'SAS', 'HOU', 'NOP', 'MEM', 'MIN', 'MIL', 'CHI']}
+        start_time_pst = (std_time + [tz for tz in tz_change_pst if inp_team in tz_change_pst[tz]][0])
+        return start_time_pst
 
     """
     def handle_connection_error(self, callback):
@@ -108,7 +124,8 @@ class CurrentNBADay:
         return "{}{}{}".format(curr_date.year, curr_date.month, curr_date.day)
 
     @property
-    def year(self):
-        return datetime.date.fromtimestamp(time.time()).year
+    def time(self):
+        time_obj = datetime.datetime.fromtimestamp(time.time()).time()
+        return int('{}{}'.format(time_obj.hour, time_obj.minute)) - 1200
 
 CurrentNBADay()
