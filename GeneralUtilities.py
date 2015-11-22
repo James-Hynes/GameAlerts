@@ -13,8 +13,7 @@ class CurrentNBADay:
         self.simple_game_dict, self.adv_game_dict = self.return_simple_game_dict(), self.return_adv_game_dict()
         self.simple_game_list = self.convert_to_list(self.simple_game_dict)
         self.adv_game_list = self.convert_to_list(self.adv_game_dict)
-        print(self.simple_game_list[0])
-        print(self.formatted_time_left(self.simple_game_list[0]))
+        print(self.time_until_game(self.simple_game_list[0]))
 
     def get_data(self, attempt=1):
         if self._valid_connection:
@@ -61,8 +60,17 @@ class CurrentNBADay:
             return {}
 
     def time_until_game(self, game):
-        print(game['start_time'], self.time)
-        return game['start_time'] - self.time
+        curr_time, game_start = self.time.split(' '), game['start_time'].split(' ')
+        curr_hr, curr_min = curr_time[0].split(':')
+        game_hr, game_min =  game_start[0].split(':')
+        print(curr_hr, curr_min, game_hr, game_min)
+
+        if curr_time[1] == game_start[1]:
+            tl_min = (((int(game_hr) - int(curr_hr)) * 60) + (int(game_min) - int(curr_min)))
+            return '{}:{}'.format((int(tl_min / 60)), '0{}'.format(tl_min % 60) if tl_min % 60 < 10 else tl_min % 60)
+        elif curr_time[1] == 'AM' and game_start[1] == 'PM':
+            pass
+        return game['start_time'] # - self.time
 
     @staticmethod
     def handle_error(callback, attempt, max_attempts=3):
@@ -86,11 +94,15 @@ class CurrentNBADay:
 
     @staticmethod
     def change_time_pst(inp_time, inp_team):
-        std_time = int(inp_time) - 1200
+        std_time = int(inp_time)
+        # print(std_time)
         tz_change_pst = {-300: ['IND', 'CLE', 'DET', 'ATL', 'BOS', 'NYK', 'BKN', 'ORL', 'MIA', 'PHI', 'WAS', 'TOR'],
                          0: ['GSW', 'SAC', 'LAL', 'LAC', 'POR'], -100: ['PHX', 'UTA', 'DEN'], -200:
                          ['OKC', 'DAL', 'SAS', 'HOU', 'NOP', 'MEM', 'MIN', 'MIL', 'CHI']}
-        start_time_pst = (std_time + [tz for tz in tz_change_pst if inp_team in tz_change_pst[tz]][0])
+        start_time_pst = str(std_time + [tz for tz in tz_change_pst if inp_team in tz_change_pst[tz]][0])
+        min = start_time_pst[-2::]
+        hr = int(start_time_pst[:2] if len(start_time_pst) % 2 == 0 else start_time_pst[:1])
+        start_time_pst = '{}:{} {}'.format(hr - 12 if hr > 12 else hr, min, 'AM' if hr < 12 else 'PM')
         return start_time_pst
 
     """
@@ -126,6 +138,10 @@ class CurrentNBADay:
     @property
     def time(self):
         time_obj = datetime.datetime.fromtimestamp(time.time()).time()
-        return int('{}{}'.format(time_obj.hour, time_obj.minute)) - 1200
+        am_pm = 'AM' if time_obj.hour < 12 else 'PM'
+        return '{}:{} {}'.format(time_obj.hour - 12 if am_pm == 'PM' and time_obj.hour > 12 else time_obj.hour - 0,
+                                 '0{}'.format(time_obj.minute) if time_obj.minute < 10 else time_obj.minute, am_pm)
+
+
 
 CurrentNBADay()
