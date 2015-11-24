@@ -65,6 +65,31 @@ class CurrentNBADay:
         num_games = len(self.simple_game_list)
         return form.format(num_games, self.string_game_list(self.simple_game_list))
 
+    def get_time_diff(self, game_time):
+        curr_time, game_start = self.time.split(' '), game_time.split(' ')
+        curr_hr, curr_min = curr_time[0].split(':')
+        game_hr, game_min = game_start[0].split(':')
+        curr_ampm, game_ampm = curr_time[1], game_start[1]
+
+        if game_ampm == curr_ampm:
+            if not game_hr == 12 and not curr_hr == 12:
+                tl_min = (((int(game_hr) - int(curr_hr)) * 60) + (int(game_min) - int(curr_min)))
+                return '{}:{}'.format((int(tl_min / 60)), '0{}'.format(tl_min % 60) if tl_min % 60 < 10 else tl_min % 60)
+            else:
+                if game_hr == curr_hr:
+                    min_diff = game_min - int(curr_min)
+                    return '00:{}'.format('0{}'.format(min_diff) if min_diff < 10 else min_diff)
+                else:
+                    min_diff = int(game_min) - int(curr_min)
+                    hr_diff = int(game_hr) if min_diff >= 0 else int(game_hr) - 1
+                    return '{}:{}'.format(hr_diff, min_diff if min_diff > 0 else 60 + min_diff)
+        elif curr_ampm == 'AM':
+            min_diff = int(game_min) - int(curr_min)
+            game_hr = int(game_hr)
+            hr_diff = (12 - int(curr_hr)) + (game_hr if min_diff >= 0 else game_hr - 1)
+            return '{}:{}'.format(hr_diff, min_diff if min_diff >= 0 else min_diff + 60)
+
+        return '0:00'
     """
     def time_until_game(self, game):
         curr_time, game_start = self.time.split(' '), game['start_time'].split(' ')
@@ -107,14 +132,15 @@ class CurrentNBADay:
                          0: ['GSW', 'SAC', 'LAL', 'LAC', 'POR'], -100: ['PHX', 'UTA', 'DEN'], -200:
                          ['OKC', 'DAL', 'SAS', 'HOU', 'NOP', 'MEM', 'MIN', 'MIL', 'CHI', 'CHA']}
         start_time_pst = str(std_time + [tz for tz in tz_change_pst if inp_team in tz_change_pst[tz]][0])
-        min = start_time_pst[-2::]
+        minute = start_time_pst[-2::]
         hr = int(start_time_pst[:2] if len(start_time_pst) % 2 == 0 else start_time_pst[:1])
-        start_time_pst = '{}:{} {}'.format(hr - 12 if hr > 12 else hr, min, 'AM' if hr < 12 else 'PM')
+        start_time_pst = '{}:{} {}'.format(hr - 12 if hr > 12 else hr, minute, 'AM' if hr < 12 else 'PM')
         return start_time_pst
 
     @staticmethod
     def string_game_list(g_list):
-        return ', '.join(['{} @ {}'.format(game['teams'][0], game['teams'][1]) for game in g_list])
+        return ', '.join(['{} @ {} - {}'.format(game['teams'][0], game['teams'][1], game['start_time'])
+                          for game in g_list])
     """
     def handle_connection_error(self, callback):
         check_connection_thread = threading.Thread(self.check_connection)
@@ -151,7 +177,6 @@ class CurrentNBADay:
         am_pm = 'AM' if time_obj.hour < 12 else 'PM'
         return '{}:{} {}'.format(time_obj.hour - 12 if am_pm == 'PM' and time_obj.hour > 12 else time_obj.hour - 0,
                                  '0{}'.format(time_obj.minute) if time_obj.minute < 10 else time_obj.minute, am_pm)
-
 
 
 CurrentNBADay()
