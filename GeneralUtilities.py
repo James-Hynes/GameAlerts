@@ -13,7 +13,7 @@ class CurrentNBADay:
         self.simple_game_dict, self.adv_game_dict = self.return_simple_game_dict(), self.return_adv_game_dict()
         self.simple_game_list = self.convert_to_list(self.simple_game_dict)
         self.adv_game_list = self.convert_to_list(self.adv_game_dict)
-        print(self.time_until_game(self.simple_game_list[0]))
+        print(self.games_today_message())
 
     def get_data(self, attempt=1):
         if self._valid_connection:
@@ -59,6 +59,13 @@ class CurrentNBADay:
         except KeyError:
             return {}
 
+    def games_today_message(self):
+        form = 'Today, there are {0} games... \n' \
+               'The games are as follows: {1}'
+        num_games = len(self.simple_game_list)
+        return form.format(num_games, self.string_game_list(self.simple_game_list))
+
+    """
     def time_until_game(self, game):
         curr_time, game_start = self.time.split(' '), game['start_time'].split(' ')
         curr_hr, curr_min = curr_time[0].split(':')
@@ -71,6 +78,7 @@ class CurrentNBADay:
         elif curr_time[1] == 'AM' and game_start[1] == 'PM':
             pass
         return game['start_time'] # - self.time
+    """
 
     @staticmethod
     def handle_error(callback, attempt, max_attempts=3):
@@ -95,16 +103,18 @@ class CurrentNBADay:
     @staticmethod
     def change_time_pst(inp_time, inp_team):
         std_time = int(inp_time)
-        # print(std_time)
         tz_change_pst = {-300: ['IND', 'CLE', 'DET', 'ATL', 'BOS', 'NYK', 'BKN', 'ORL', 'MIA', 'PHI', 'WAS', 'TOR'],
                          0: ['GSW', 'SAC', 'LAL', 'LAC', 'POR'], -100: ['PHX', 'UTA', 'DEN'], -200:
-                         ['OKC', 'DAL', 'SAS', 'HOU', 'NOP', 'MEM', 'MIN', 'MIL', 'CHI']}
+                         ['OKC', 'DAL', 'SAS', 'HOU', 'NOP', 'MEM', 'MIN', 'MIL', 'CHI', 'CHA']}
         start_time_pst = str(std_time + [tz for tz in tz_change_pst if inp_team in tz_change_pst[tz]][0])
         min = start_time_pst[-2::]
         hr = int(start_time_pst[:2] if len(start_time_pst) % 2 == 0 else start_time_pst[:1])
         start_time_pst = '{}:{} {}'.format(hr - 12 if hr > 12 else hr, min, 'AM' if hr < 12 else 'PM')
         return start_time_pst
 
+    @staticmethod
+    def string_game_list(g_list):
+        return ', '.join(['{} @ {}'.format(game['teams'][0], game['teams'][1]) for game in g_list])
     """
     def handle_connection_error(self, callback):
         check_connection_thread = threading.Thread(self.check_connection)
